@@ -1,15 +1,14 @@
 ﻿using EnvDTE;
 using Microsoft.Build.Evaluation;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
 
 namespace ExcludeAllIgnored
 {
-	[Command(PackageIds.ExcludeAllIgnoredCommand)]
-	internal sealed class ExcludeAllIgnoredCommand : BaseCommand<ExcludeAllIgnoredCommand>
+	[Command(PackageIds.ExcludeAllIgnoredFiles)]
+	internal sealed class ExcludeAllIgnoredFiles : BaseCommand<ExcludeAllIgnoredFiles>
 	{
 		protected override async Task ExecuteAsync(OleMenuCmdEventArgs e)
 		{
