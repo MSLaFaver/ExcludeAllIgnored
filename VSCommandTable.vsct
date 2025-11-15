@@ -8,21 +8,19 @@
 
   <Commands package="ExcludeAllIgnored">
     <Groups>
-      <Group guid="ExcludeAllIgnored" id="MyMenuGroup" priority="0x0600">
+      <Group guid="ExcludeAllIgnored" id="MenuGroup" priority="0x0600">
         <Parent guid="VSMainMenu" id="Tools"/>
       </Group>
     </Groups>
-
-    <!--This section defines the elements the user can interact with, like a menu command or a button
-        or combo box in a toolbar. -->
+    
     <Buttons>
-      <Button guid="ExcludeAllIgnored" id="MyCommand" priority="0x0100" type="Button">
-        <Parent guid="ExcludeAllIgnored" id="MyMenuGroup" />
-        <Icon guid="ImageCatalogGuid" id="StatusInformation" />
+      <Button guid="ExcludeAllIgnored" id="ExcludeAllIgnoredFiles" priority="0x0100" type="Button">
+        <Parent guid="ExcludeAllIgnored" id="MenuGroup" />
+        <Icon guid="ImageCatalogGuid" id="StatusExcludedOutline" />
         <CommandFlag>IconIsMoniker</CommandFlag>
         <Strings>
-          <ButtonText>My Command</ButtonText>
-          <LocCanonicalName>.ExcludeAllIgnored.MyCommand</LocCanonicalName>
+          <ButtonText>Exclude all ignored files</ButtonText>
+          <CanonicalName>.ExcludeAllIgnored.ExcludeAllIgnoredFiles</CanonicalName>
         </Strings>
       </Button>
     </Buttons>
@@ -30,8 +28,8 @@
 
   <Symbols>
     <GuidSymbol name="ExcludeAllIgnored" value="{a9ba6c4d-acc1-47a8-93d1-3eac702ef86c}">
-      <IDSymbol name="MyMenuGroup" value="0x0001" />
-      <IDSymbol name="MyCommand" value="0x0100" />
+      <IDSymbol name="MenuGroup" value="0x0001" />
+      <IDSymbol name="ExcludeAllIgnoredFiles" value="0x0100" />
     </GuidSymbol>
   </Symbols>
 </CommandTable>

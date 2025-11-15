@@ -4,7 +4,7 @@
     <Platform Name="arm64" />
     <Platform Name="x86" />
   </Configurations>
-  <Project Path="ExcludeAllIgnored.csproj">
+  <Project Path="ExcludeAllIgnored.csproj" Id="946ac5c3-fc38-4a19-885f-64189f7979a3">
     <Platform Solution="*|arm64" Project="arm64" />
     <Platform Solution="*|x86" Project="x86" />
   </Project>
