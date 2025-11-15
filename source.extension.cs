@@ -8,8 +8,8 @@ namespace ExcludeAllIgnored
 {
     internal sealed partial class Vsix
     {
-        public const string Id = "ExcludeAllIgnored-1.0.0";
-        public const string Name = "Exclude All Ignored";
+        public const string Id = "MSLaFaver-ExcludeAllIgnored-1.0.0";
+        public const string Name = "Exclude all ignored files";
         public const string Description = @"Adds an option in the Tools menu to exclude all files from the solution's projects that are currently ignored according to the solution's Git repo configuration. Created with GPT-5 to solve a personal problem during application migration.";
         public const string Language = "en-US";
         public const string Version = "1.0.0";
