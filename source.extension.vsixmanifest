@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011" xmlns:d="http://schemas.microsoft.com/developer/vsx-schema-design/2011">
     <Metadata>
-        <Identity Id="MSLaFaver.ExcludeAllIgnored" Version="1.0.0" Language="en-US" Publisher="Michael LaFaver" />
+        <Identity Id="MSLaFaver.ExcludeAllIgnored" Version="1.0.1" Language="en-US" Publisher="Michael LaFaver" />
         <DisplayName>Exclude all ignored files</DisplayName>
-        <Description xml:space="preserve">Adds an option in the Tools menu to exclude all files from the solution's projects that are currently ignored according to the solution's Git repo configuration. Created with GPT-5 to solve a personal problem during application migration.</Description>
+        <Description xml:space="preserve">Adds an option in the Tools menu to exclude all files from the solution's projects that are currently ignored according to the solution's Git repo. Created with GPT-5 for a personal project.</Description>
         <Icon>Resources\Icon.png</Icon>
         <PreviewImage>Resources\Icon.png</PreviewImage>
     </Metadata>
