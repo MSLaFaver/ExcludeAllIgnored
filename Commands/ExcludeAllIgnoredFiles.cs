@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace ExcludeAllIgnored
 {
@@ -169,8 +170,7 @@ namespace ExcludeAllIgnored
 										try
 										{
 											var evaluated = i.EvaluatedInclude ?? string.Empty;
-											var full = Path.GetFullPath(Path.Combine(projDir, evaluated));
-											return string.Equals(full, Path.GetFullPath(file), StringComparison.OrdinalIgnoreCase);
+											return IncludeMatchesFile(projDir, evaluated, file);
 										}
 										catch { return false; }
 									}).ToList();
@@ -293,6 +293,64 @@ namespace ExcludeAllIgnored
 				ret = path + Path.DirectorySeparatorChar;
 			}
 			return ret;
+		}
+
+		private static bool IncludeMatchesFile(string projDir, string evaluatedInclude, string filePath)
+		{
+            bool result;
+            try
+			{
+				if (string.IsNullOrEmpty(evaluatedInclude))
+				{
+					var full = Path.GetFullPath(Path.Combine(projDir, evaluatedInclude));
+					result = string.Equals(full, Path.GetFullPath(filePath), StringComparison.OrdinalIgnoreCase);
+				}
+				else if (evaluatedInclude.IndexOfAny(['*', '?']) < 0 && !evaluatedInclude.Contains("**"))
+				{
+					var full = Path.GetFullPath(Path.Combine(projDir, evaluatedInclude));
+					result = string.Equals(full, Path.GetFullPath(filePath), StringComparison.OrdinalIgnoreCase);
+				}
+				else
+				{
+					var patternPath = Path.Combine(projDir, evaluatedInclude).Replace('/', Path.DirectorySeparatorChar);
+					var sb = new StringBuilder();
+					sb.Append('^');
+					for (int i = 0; i < patternPath.Length; i++)
+					{
+						var c = patternPath[i];
+						if (c == '*')
+						{
+							if (i + 1 < patternPath.Length && patternPath[i + 1] == '*')
+							{
+								sb.Append(".*");
+								i++;
+							}
+							else
+							{
+								sb.Append("[^\\\\]*");
+							}
+						}
+						else if (c == '?')
+						{
+							sb.Append("[^\\\\]");
+						}
+						else
+						{
+							sb.Append(Regex.Escape(c.ToString()));
+						}
+					}
+					sb.Append('$');
+
+					var regex = new Regex(sb.ToString(), RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+					var fullFile = Path.GetFullPath(filePath);
+					result = regex.IsMatch(fullFile);
+				}
+			}
+			catch
+			{
+				result = false;
+			}
+			return result;
 		}
 	}
 }
