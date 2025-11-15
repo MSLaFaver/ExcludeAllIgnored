@@ -12,7 +12,7 @@ namespace ExcludeAllIgnored
         public const string Name = "Exclude all ignored files";
         public const string Description = @"Adds an option in the Tools menu to exclude all files from the solution's projects that are currently ignored according to the solution's Git repo. Created with GPT-5 for a personal project.";
         public const string Language = "en-US";
-        public const string Version = "1.0.2";
+        public const string Version = "1.0.3";
         public const string Author = "Michael LaFaver";
         public const string Tags = "";
         public const bool IsPreview = false;

@@ -26,7 +26,7 @@ namespace ExcludeAllIgnored
 					var beforeCount = allFiles.Count;
 					if (proj.ProjectItems != null)
 					{
-						var stack = new System.Collections.Generic.Stack<EnvDTE.ProjectItems>();
+						var stack = new Stack<ProjectItems>();
 						stack.Push(proj.ProjectItems);
 						while (stack.Count > 0)
 						{
@@ -80,7 +80,7 @@ namespace ExcludeAllIgnored
 					{
 						if (!filesByRepo.TryGetValue(repo, out var list))
 						{
-							list = new List<string>();
+							list = [];
 							filesByRepo[repo] = list;
 						}
 						list.Add(file);
@@ -104,7 +104,7 @@ namespace ExcludeAllIgnored
 						try
 						{
 							var relPaths = files.Select(f => GetRelativePath(repoRoot, f).Replace(Path.DirectorySeparatorChar, '/')).ToList();
-							var matched = RunGitCheckIgnore(repoRoot, relPaths);
+							var matched = RunGitIgnoreCheck(repoRoot, relPaths);
 							foreach (var r in matched)
 							{
 								var abs = Path.GetFullPath(Path.Combine(repoRoot, r));
@@ -136,7 +136,8 @@ namespace ExcludeAllIgnored
 										{
 											if (!projects.TryGetValue(projPath, out var list))
 											{
-												list = new List<string>(); projects[projPath] = list;
+												list = [];
+												projects[projPath] = list;
 											}
 											list.Add(f);
 										}
@@ -170,7 +171,8 @@ namespace ExcludeAllIgnored
 										try
 										{
 											var evaluated = i.EvaluatedInclude ?? string.Empty;
-											return IncludeMatchesFile(projDir, evaluated, file);
+											var full = Path.GetFullPath(Path.Combine(projDir, evaluated));
+											return string.Equals(full, Path.GetFullPath(file), StringComparison.OrdinalIgnoreCase);
 										}
 										catch { return false; }
 									}).ToList();
@@ -183,8 +185,6 @@ namespace ExcludeAllIgnored
 										msg.AppendLine($"\t{fullPath}");
 										anyRemoved = true;
 									}
-
-									pc.UnloadAllProjects();
 								}
 
 								if (anyRemoved)
@@ -194,6 +194,8 @@ namespace ExcludeAllIgnored
 								}
 							}
 							catch { }
+
+							ProjectCollection.GlobalProjectCollection.UnloadAllProjects();
 						}
 
 						msg.AppendLine("\nYou may now reload the project to apply the changes.");
@@ -220,52 +222,147 @@ namespace ExcludeAllIgnored
 			return ret;
 		}
 
-		private static List<string> RunGitCheckIgnore(string workingDirectory, List<string> relativePaths)
+		private static List<string> RunGitIgnoreCheck(string workingDirectory, List<string> relativePaths)
 		{
 			var result = new List<string>();
 			if (!(relativePaths == null || relativePaths.Count == 0))
 			{
-				var psi = new System.Diagnostics.ProcessStartInfo("git")
+				var gi = Path.Combine(workingDirectory, ".gitignore");
+				if (File.Exists(gi))
 				{
-					Arguments = "check-ignore --stdin -z",
-					RedirectStandardInput = true,
-					RedirectStandardOutput = true,
-					RedirectStandardError = true,
-					UseShellExecute = false,
-					CreateNoWindow = true,
-					WorkingDirectory = workingDirectory,
-				};
+					var patterns = ReadGitIgnorePatterns(gi);
 
-				using (var p = System.Diagnostics.Process.Start(psi))
-				{
-					var stdin = p.StandardInput.BaseStream;
-					var enc = Encoding.UTF8;
-					foreach (var r in relativePaths)
+					foreach (var rp in relativePaths)
 					{
-						var bytes = enc.GetBytes(r + "\0");
-						stdin.Write(bytes, 0, bytes.Length);
-					}
-					stdin.Flush();
-					p.StandardInput.Close();
-
-					using (var ms = new MemoryStream())
-					{
-						p.StandardOutput.BaseStream.CopyTo(ms);
-						var outBytes = ms.ToArray();
-						if (outBytes != null && outBytes.Length > 0)
+						var rel = rp.Replace('\\', '/');
+						bool ignored = false;
+						foreach (var pat in patterns)
 						{
-							var outStr = Encoding.UTF8.GetString(outBytes);
-							var parts = outStr.Split(new char[] { '\0' }, StringSplitOptions.RemoveEmptyEntries);
-							result.AddRange(parts);
+							if (string.IsNullOrEmpty(pat))
+							{
+								continue;
+							}
+							var neg = pat.StartsWith("!");
+							var p = neg ? pat.Substring(1) : pat;
+							if (MatchesGitIgnorePattern(p, rel))
+							{
+								if (neg)
+								{
+									ignored = false;
+								}
+								else
+								{
+									ignored = true;
+								}
+							}
+						}
+						if (ignored)
+						{
+							result.Add(rel);
 						}
 					}
+				}
+			}
+			return result;
+		}
 
-					p.WaitForExit(5000);
+		private static List<string> ReadGitIgnorePatterns(string gitignorePath)
+		{
+			var lines = new List<string>();
+			foreach (var raw in File.ReadAllLines(gitignorePath))
+			{
+				var l = raw.Trim();
+				if (!(string.IsNullOrEmpty(l) || l.StartsWith("#")))
+				{
+					lines.Add(l);
+				}
+			}
+			return lines;
+		}
+
+		private static bool MatchesGitIgnorePattern(string pattern, string relPath)
+		{
+			var pat = pattern.Replace('\\', '/');
+			var path = relPath.Replace('\\', '/');
+
+			bool matched = false;
+
+			bool directoryPattern = pat.EndsWith("/");
+			if (directoryPattern)
+			{
+				pat = pat.Substring(0, pat.Length - 1);
+			}
+
+			bool anchored = pat.StartsWith("/");
+			if (anchored)
+			{
+				pat = pat.Substring(1);
+			}
+
+			if (pat == "")
+			{
+				matched = false;
+			}
+			else
+			{
+				var patRegex = ConvertGlobToRegex(pat);
+
+				if (!matched && anchored)
+				{
+					var rx = new Regex("^" + patRegex + "($|/.*)", RegexOptions.IgnoreCase);
+					if (rx.IsMatch(path))
+					{
+						matched = true;
+					}
+				}
+
+				if (!matched && pat.Contains("/"))
+				{
+					var rx = new Regex("(^|.*/)" + patRegex + "($|/.*)", RegexOptions.IgnoreCase);
+					if (rx.IsMatch(path))
+					{
+						matched = true;
+					}
+				}
+
+				if (!matched)
+				{
+					var fileName = Path.GetFileName(path);
+					var rxf = new Regex("^" + patRegex + "$", RegexOptions.IgnoreCase);
+					if (rxf.IsMatch(fileName))
+					{
+						matched = true;
+					}
+					else
+					{
+						var segments = path.Split(new[] { '/' }, StringSplitOptions.RemoveEmptyEntries);
+						foreach (var seg in segments)
+						{
+							if (rxf.IsMatch(seg))
+							{
+								matched = true;
+								break;
+							}
+						}
+					}
 				}
 			}
 
-			return result;
+			return matched;
 		}
+
+		private static string ConvertGlobToRegex(string pattern)
+		{
+			var esc = Regex.Escape(pattern);
+			esc = esc.Replace("\\*\\*", "###DS###");
+			esc = esc.Replace("\\*", "###S###");
+			esc = esc.Replace("\\?", "###Q###");
+			esc = esc.Replace("###DS###", ".*");
+			esc = esc.Replace("###S###", "[^/]*");
+			esc = esc.Replace("###Q###", "[^/]");
+			return esc;
+		}
+
 
 		private static string GetRelativePath(string basePath, string path)
 		{
@@ -293,64 +390,6 @@ namespace ExcludeAllIgnored
 				ret = path + Path.DirectorySeparatorChar;
 			}
 			return ret;
-		}
-
-		private static bool IncludeMatchesFile(string projDir, string evaluatedInclude, string filePath)
-		{
-            bool result;
-            try
-			{
-				if (string.IsNullOrEmpty(evaluatedInclude))
-				{
-					var full = Path.GetFullPath(Path.Combine(projDir, evaluatedInclude));
-					result = string.Equals(full, Path.GetFullPath(filePath), StringComparison.OrdinalIgnoreCase);
-				}
-				else if (evaluatedInclude.IndexOfAny(['*', '?']) < 0 && !evaluatedInclude.Contains("**"))
-				{
-					var full = Path.GetFullPath(Path.Combine(projDir, evaluatedInclude));
-					result = string.Equals(full, Path.GetFullPath(filePath), StringComparison.OrdinalIgnoreCase);
-				}
-				else
-				{
-					var patternPath = Path.Combine(projDir, evaluatedInclude).Replace('/', Path.DirectorySeparatorChar);
-					var sb = new StringBuilder();
-					sb.Append('^');
-					for (int i = 0; i < patternPath.Length; i++)
-					{
-						var c = patternPath[i];
-						if (c == '*')
-						{
-							if (i + 1 < patternPath.Length && patternPath[i + 1] == '*')
-							{
-								sb.Append(".*");
-								i++;
-							}
-							else
-							{
-								sb.Append("[^\\\\]*");
-							}
-						}
-						else if (c == '?')
-						{
-							sb.Append("[^\\\\]");
-						}
-						else
-						{
-							sb.Append(Regex.Escape(c.ToString()));
-						}
-					}
-					sb.Append('$');
-
-					var regex = new Regex(sb.ToString(), RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
-					var fullFile = Path.GetFullPath(filePath);
-					result = regex.IsMatch(fullFile);
-				}
-			}
-			catch
-			{
-				result = false;
-			}
-			return result;
 		}
 	}
 }
